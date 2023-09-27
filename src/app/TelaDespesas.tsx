@@ -1,4 +1,3 @@
-import { apiGetAllDB } from "../service/apiService";
 import { ChangeEvent, useEffect, useState } from "react";
 
 import { makeStyles } from "@material-ui/core/styles";
@@ -15,12 +14,14 @@ import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import Paper from "@material-ui/core/Paper";
 import { useHistory, useParams } from "react-router-dom";
+import { IExpense, apiGetAllDB } from "./backend";
+import { UserMenu } from "./UserMenu";
 
 const useStyles = makeStyles({
   formControl: {
     display: "inline-block",
-    marginTop: 50,
-    marginLeft: 30,
+    marginTop: 10,
+    marginLeft: 20,
     minWidth: 50,
   },
   selectEmpty: {
@@ -30,17 +31,6 @@ const useStyles = makeStyles({
     minWidth: 500,
   },
 });
-
-interface IExpense {
-  length: number;
-  map: any;
-  id: number;
-  descricao: string;
-  categoria: string;
-  valor: number;
-  mes: string;
-  dia: string;
-}
 
 export default function TelaDespesas() {
   const classes = useStyles();
@@ -120,9 +110,18 @@ export default function TelaDespesas() {
       <Box
         display="flex"
         flexDirection="row"
+        justifyContent="space-between"
+        margin="0 20px"
         alignItems="flex-end"
-        marginBottom="20px"
         padding="0 2rem"
+      >
+        <h1>Despesas</h1>
+        <UserMenu />
+      </Box>
+      <Box
+        display="flex"
+        flexDirection="row"
+        alignItems="flex-end"
       >
         <Box flex="1">
           <FormControl className={classes.formControl}>
