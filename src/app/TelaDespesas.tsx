@@ -5,7 +5,14 @@ import InputLabel from "@material-ui/core/InputLabel";
 import MenuItem from "@material-ui/core/MenuItem";
 import FormControl from "@material-ui/core/FormControl";
 import Select from "@material-ui/core/Select";
-import { Box, Typography } from "@material-ui/core";
+import {
+  Box,
+  FormControlLabel,
+  FormLabel,
+  Radio,
+  RadioGroup,
+  Typography,
+} from "@material-ui/core";
 import Table from "@material-ui/core/Table";
 import TableBody from "@material-ui/core/TableBody";
 import TableCell from "@material-ui/core/TableCell";
@@ -16,6 +23,7 @@ import Paper from "@material-ui/core/Paper";
 import { useHistory, useParams } from "react-router-dom";
 import { IExpense, apiGetAllDB } from "./backend";
 import { UserMenu } from "./UserMenu";
+import useCalculaValores from "./useCalculaValores";
 
 const useStyles = makeStyles({
   formControl: {
@@ -36,16 +44,6 @@ export default function TelaDespesas() {
   const classes = useStyles();
   const [year, setYear] = useState<string>("2020");
   const [month, setMonth] = useState<string>("6");
-
-  const params = useParams<{ yearMonth: string }>();
-  const history = useHistory();
-  let yearMonth = params.yearMonth;
-
-  function mudaAnoMes(year: string, month: string) {
-    yearMonth = `${year}-${month.toString().padStart(2, "0")}`;
-    history.push(`/despesas/${yearMonth}`);
-  }
-
   const years = [2020, 2021];
   const months = [
     "Janeiro",
@@ -61,18 +59,17 @@ export default function TelaDespesas() {
     "Novembro",
     "Dezembro",
   ];
+
+  const params = useParams<{ yearMonth: string }>();
+  const history = useHistory();
+  let yearMonth = params.yearMonth;
+
+  function mudaAnoMes(year: string, month: string) {
+    yearMonth = `${year}-${month.toString().padStart(2, "0")}`;
+    history.push(`/despesas/${yearMonth}`);
+  }
+
   const [expenses, setExpenses] = useState<IExpense[]>([]);
-
-  const arrExpenses = expenses?.map(
-    (expense: { valor: number }) => expense.valor
-  );
-
-  const sumExpenses = (arr: number[]) =>
-    arr.reduce((total: number, atual: number) => total + atual, 0);
-
-  const total = arrExpenses
-    ? sumExpenses(arrExpenses).toLocaleString("pt-BR")
-    : 0;
 
   useEffect(() => {
     async function getAllDB() {
@@ -105,6 +102,16 @@ export default function TelaDespesas() {
     mudaAnoMes(year, month);
   };
 
+  const { categoriasSoma, somaTotal } = useCalculaValores(expenses);
+
+  const [tabelaSelecionada, setTabelaSelecionada] = useState("resumo");
+
+  const handleTabelaSelecionada = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setTabelaSelecionada((event.target as HTMLInputElement).value);
+  };
+
   return (
     <div>
       <Box
@@ -118,11 +125,7 @@ export default function TelaDespesas() {
         <h1>Despesas</h1>
         <UserMenu />
       </Box>
-      <Box
-        display="flex"
-        flexDirection="row"
-        alignItems="flex-end"
-      >
+      <Box display="flex" flexDirection="row" alignItems="flex-end">
         <Box flex="1">
           <FormControl className={classes.formControl}>
             <InputLabel id="select-year">Ano</InputLabel>
@@ -156,8 +159,29 @@ export default function TelaDespesas() {
           </FormControl>
         </Box>
         <Typography variant="subtitle1" gutterBottom>
-          Despesa total: R$ {total}
+          Despesa total: R$ {somaTotal.toLocaleString("pt-BR")}
         </Typography>
+      </Box>
+      <Box display="flex" justifyContent="center">
+        <FormControl component="fieldset">
+          <RadioGroup
+            row
+            name="tabela"
+            value={tabelaSelecionada}
+            onChange={handleTabelaSelecionada}
+          >
+            <FormControlLabel
+              value="resumo"
+              control={<Radio />}
+              label="RESUMO"
+            />
+            <FormControlLabel
+              value="detalhes"
+              control={<Radio />}
+              label="DETALHES"
+            />
+          </RadioGroup>
+        </FormControl>
       </Box>
       <Box>
         <TableContainer component={Paper}>
@@ -167,30 +191,52 @@ export default function TelaDespesas() {
             aria-label="Tabela de despesas"
           >
             <TableHead>
-              <TableRow>
-                <TableCell>Despesa</TableCell>
-                <TableCell>Categoria</TableCell>
-                <TableCell>Dia</TableCell>
-                <TableCell align="right">Valor (R$)</TableCell>
-              </TableRow>
+              {tabelaSelecionada === "resumo" ? (
+                <TableRow>
+                  <TableCell>Categoria</TableCell>
+                  <TableCell>Valor (R$)</TableCell>
+                </TableRow>
+              ) : (
+                <TableRow>
+                  <TableCell>Despesa</TableCell>
+                  <TableCell>Categoria</TableCell>
+                  <TableCell>Dia</TableCell>
+                  <TableCell align="right">Valor (R$)</TableCell>
+                </TableRow>
+              )}
             </TableHead>
             {expenses && expenses.length > 0 ? (
-              <TableBody>
-                {expenses.map((row: IExpense) => (
-                  <TableRow key={row.id}>
-                    <TableCell component="th" scope="row">
-                      {row.descricao}
-                    </TableCell>
-                    <TableCell>{row.categoria}</TableCell>
-                    <TableCell>{row.dia}</TableCell>
-                    <TableCell align="right">
-                      {row.valor.toLocaleString("pt-BR", {
-                        minimumFractionDigits: 2,
-                      })}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
+              tabelaSelecionada === "resumo" ? (
+                <TableBody>
+                  {Object.keys(categoriasSoma).map((categoria) => (
+                    <TableRow key={categoria}>
+                      <TableCell>{categoria}</TableCell>
+                      <TableCell>
+                        {categoriasSoma[categoria].total.toLocaleString(
+                          "pt-BR"
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              ) : (
+                <TableBody>
+                  {expenses.map((row: IExpense) => (
+                    <TableRow key={row.id}>
+                      <TableCell component="th" scope="row">
+                        {row.descricao}
+                      </TableCell>
+                      <TableCell>{row.categoria}</TableCell>
+                      <TableCell>{row.dia}</TableCell>
+                      <TableCell align="right">
+                        {row.valor.toLocaleString("pt-BR", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              )
             ) : (
               <caption>Nenhum dado de despesa disponível.</caption>
             )}
